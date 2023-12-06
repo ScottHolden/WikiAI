@@ -7,7 +7,7 @@
 }
 
 body {
-    background-color: #E2E2E2;
+    background-color: #FFF;
 }
 
 /* Nav Bar */
@@ -54,20 +54,22 @@ a {
     display: block;
     margin-bottom: 20px;
 }
-.answer {
+.answer>div {
     text-align: center;
     max-width: 600px;
     margin: auto;
+    margin-top: 20px;
     border: solid 1px #333;
     border-radius: 20px;
-    display: none;
     overflow: hidden;
+    background-color: #E2E2E2;
 }
-.answer>h3 {
+.answer>div>h3 {
     padding: 20px;
     border-bottom: solid 1px #333;
+    background-color: #CCC;
 }
-.answer>p {
+.answer>div>p {
     padding: 10px;
 } 
 .small {
@@ -110,14 +112,11 @@ form {
     border: 16px solid #f3f3f3;
     border-top: 16px solid #3498db;
     border-radius: 50%;
-    width: 120px;
-    height: 120px;
+    width: 80px;
+    height: 80px;
     animation: spin 2s linear infinite;
     display: none;
     margin: auto;
-}
-#questionTitle {
-    background-color: #CCC;
 }
 @keyframes spin {
     0% { transform: rotate(0deg); }
