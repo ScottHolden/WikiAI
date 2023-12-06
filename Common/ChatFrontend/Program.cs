@@ -1,3 +1,5 @@
+using Azure;
+using Azure.Search.Documents;
 using Microsoft.AspNetCore.Mvc;
 using MongoDB.Driver;
 
@@ -21,6 +23,14 @@ builder.Services.AddSingleton<AzureOpenAIChatCompletion>(x =>
 	string embeddingDeployment = config.RequiredConfigValue("AOAI_DEPLOYMENT_EMBEDDING");
 	return new AzureOpenAIChatCompletion(endpoint, key, chatDeployment, embeddingDeployment);
 });
+builder.Services.AddSingleton<SearchClient>(x =>
+{
+	var config = x.GetRequiredService<IConfiguration>();
+	var endpoint = config.RequiredConfigValue("AISEARCH_ENDPOINT");
+	var key = config.RequiredConfigValue("AISEARCH_KEY");
+	var index = config.RequiredConfigValue("AISEARCH_INDEX");
+	return new SearchClient(new Uri(endpoint), index, new AzureKeyCredential(key));
+});
 builder.Services.AddSingleton<IMongoDatabase>(x =>
 {
 	var config = x.GetRequiredService<IConfiguration>();
@@ -29,6 +39,8 @@ builder.Services.AddSingleton<IMongoDatabase>(x =>
 	var databaseName = config.ConfigValueOrDefault("MONGO_DATABASE", "wiki");
 	return client.GetDatabase(databaseName); ;
 });
+builder.Services.AddSingleton<VectorSearch>();
+builder.Services.AddSingleton<AzureAISearch>();
 
 var app = builder.Build();
 app.UseHttpsRedirection();
@@ -43,6 +55,9 @@ app.MapPost("/api/ask", async ([FromBody] AskRequest req, [FromServices] WikiCop
 		_ => await wc.AskDirectToWikiAsync(req.question)
 	}
 );
+
+app.MapPost("/api/vector/init", async ([FromServices] VectorSearch vs) => await vs.BuildDatabaseAsync());
+app.MapPost("/api/aisearch/init", async ([FromServices] AzureAISearch aisearch) => await aisearch.BuildIndexAsync());
 
 app.Run();
 

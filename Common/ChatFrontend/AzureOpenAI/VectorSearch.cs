@@ -6,11 +6,11 @@ public class VectorSearch
 	private readonly IMongoCollection<BsonDocument> _vectors;
 	private readonly IWikiClient _wikiClient;
 	private readonly AzureOpenAIChatCompletion _azureOpenAI;
-	public VectorSearch(IWikiClient wikiClient, AzureOpenAIChatCompletion azureOpenAI, IMongoCollection<BsonDocument> vectors)
+	public VectorSearch(IWikiClient wikiClient, AzureOpenAIChatCompletion azureOpenAI, IMongoDatabase mongoDatabase)
 	{
 		_wikiClient = wikiClient;
 		_azureOpenAI = azureOpenAI;
-		_vectors = vectors;
+		_vectors = mongoDatabase.GetCollection<BsonDocument>("vectors"); ;
 	}
 
 	public async Task<List<string>> BuildDatabaseAsync()

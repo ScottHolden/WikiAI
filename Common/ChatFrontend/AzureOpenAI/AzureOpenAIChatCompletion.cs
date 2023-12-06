@@ -21,7 +21,7 @@ public class AzureOpenAIChatCompletion
 	{
 		var chatMessages = new ChatMessage[] {
 			new ChatMessage(ChatRole.System, prompt),
-			new ChatMessage(ChatRole.Function, "Sources:\n" + string.Join("\n", sources.Select(x=>$"{x.Key}: {x.Value.ReplaceLineEndings(" ")}"))){
+			new ChatMessage(ChatRole.Function, "Sources:\n" + string.Join("\n", sources.Select(x=>$"{x.Key}: \"\"\"{x.Value.ReplaceLineEndings(" ").Replace("\"","")}\"\"\""))){
 				Name = "Sources"
 			},
 			new ChatMessage(ChatRole.User, message)
@@ -40,7 +40,8 @@ public class AzureOpenAIChatCompletion
 	{
 		var chatCompletionsOptions = new ChatCompletionsOptions(_deploymentName, chatMessages)
 		{
-			MaxTokens = 250
+			MaxTokens = 200,
+			Temperature = 0.4f
 		};
 		List<Exception> errors = new();
 		for (int i = 0; i < 3; i++)

@@ -1,0 +1,95 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <title>WikiAI</title>
+  <link rel="stylesheet" type="text/css" href="style.css">
+</head>
+<body>
+  <nav>
+    <h2>WikiAI</h2>
+    <p>Confluence + Azure OpenAI</p>
+    <a href="https://github.com/ScottHolden/" target="_blank">Source on GitHub</a>
+  </nav>
+  <div class="search new" id="topSearch">
+    <h1 style="text-align: center;">WikiAI</h1>
+    <form>
+        <input type="text" placeholder="Enter your question">
+        <button type="submit" id="askbutton">Ask</button>
+        <div class="break"></div>
+        <input type="radio" id="wikiSearch" name="searchType" value="wiki" checked="checked">
+        <label for="wikiSearch">Wiki Search</label>
+        
+        <input type="radio" id="vectorSearch" name="searchType" value="vector">
+        <label for="vectorSearch">Vector Search + Wiki</label>
+        
+        <input type="radio" id="azureSearch" name="searchType" value="aisearch">
+        <label for="azureSearch">Azure AI Search</label>
+    </form>
+    </div>
+    <div id="spinner"></div>
+    <div class="answer" id="answerBox">
+        <h3 id="questionTitle"></h3>
+        <p id="answerText"></p>
+        <div id="answerReferences"></div>
+        <div id="answerNotes" class="small"></div>
+    </div>
+    <script>
+        (()=>{
+            const askButton = document.getElementById("askbutton");
+            const questionTitle = document.getElementById("questionTitle");
+            const answerText = document.getElementById("answerText");
+            const answerReferences = document.getElementById("answerReferences");
+            const answerNotes = document.getElementById("answerNotes");
+            const topSearch = document.getElementById("topSearch");
+            const answerBox = document.getElementById("answerBox");
+            const spinner = document.getElementById("spinner");
+            askButton.addEventListener("click", (e)=>{
+                e.preventDefault();
+                const question = document.querySelector('input[type="text"]').value;
+                if (!question) return;
+
+                const searchType = document.querySelector('input[name="searchType"]:checked').value;
+                topSearch.className = "search";
+                spinner.style.display = "block";
+                answerBox.style.display = "none";
+                fetch(`/api/ask?engine=${searchType}`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({
+                        question: question
+                    })
+                })
+                .then(response => response.json())
+                .then(data => {
+                    spinner.style.display = "none";
+                    console.log(data);
+                    questionTitle.innerText = question;
+                    answerText.innerText = data.answer;
+                    answerNotes.innerText = data.notes;
+                    answerReferences.innerHTML = '';
+                    for (const property in data.references) {
+                        const reference = data.references[property];
+                        const link = document.createElement('a');
+                        link.href = reference.url;
+                        link.textContent = `[${property}] ${reference.title}`;
+                        link.target = '_blank';
+                        answerReferences.appendChild(link);
+                    }
+                    answerBox.style.display = "block";
+                })
+                .catch(error => {
+                    console.error(error);
+                    spinner.style.display = "block";
+                    questionTitle.innerText = question;
+                    answerText.innerText = "Couldn't connect to the server, please try again.";
+                    answerNotes.innerText = '';
+                    answerReferences.innerHTML = '';
+                    answerBox.style.display = "block";
+                });
+            });
+        })();
+    </script>
+</body>
+</html>

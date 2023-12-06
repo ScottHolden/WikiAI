@@ -1,0 +1,125 @@
+/* CSS Reset */
+* {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+    font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+}
+
+body {
+    background-color: #E2E2E2;
+}
+
+/* Nav Bar */
+nav {
+    width: 100%;
+    height: 80px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 0 20px;
+    background-color: #2E2E2E;
+    color: #FFF;
+}
+
+a {
+    color: inherit;
+    display: block;
+}
+
+/* Centered Search */
+.search {
+    padding: 0 40px;
+    max-width: 100%;
+    width: 100%;
+    background-color: #8E8E8E;
+    text-align: center;
+    margin-bottom: 50px;
+}
+
+/* Below Nav Bar */
+.search.new {
+    padding: 40px;
+    max-width: 600px;
+    margin: auto;
+    margin-top: 18%;
+    border-radius: 20px;
+}
+
+.search>h1 {
+    display: none;
+}
+
+.search.new>h1 {
+    display: block;
+    margin-bottom: 20px;
+}
+.answer {
+    text-align: center;
+    max-width: 600px;
+    margin: auto;
+    border: solid 1px #333;
+    border-radius: 20px;
+    display: none;
+    overflow: hidden;
+}
+.answer>h3 {
+    padding: 20px;
+    border-bottom: solid 1px #333;
+}
+.answer>p {
+    padding: 10px;
+} 
+.small {
+    padding-top: 5px;
+    font-size: 0.8em;
+    font-style: italic;
+}
+input[type='text'] { 
+    padding: 7px;
+    border: 1px solid #000;
+    border-right: none;
+    border-radius: 8px 0 0 8px;
+    margin: 5px 0;
+    flex: 8;
+}
+button { 
+    padding: 7px 20px;
+    border: 1px solid #000;
+    border-radius: 0 8px 8px 0;
+    margin: 5px 0;
+    flex: 2;
+}
+form {
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: center;
+}
+.break {
+    flex-basis: 100%;
+    height: 0;
+  }
+label {
+    padding: 5px 10px 8px 0;
+}
+form {
+    max-width: 600px;
+    margin: auto;
+}
+#spinner {
+    border: 16px solid #f3f3f3;
+    border-top: 16px solid #3498db;
+    border-radius: 50%;
+    width: 120px;
+    height: 120px;
+    animation: spin 2s linear infinite;
+    display: none;
+    margin: auto;
+}
+#questionTitle {
+    background-color: #CCC;
+}
+@keyframes spin {
+    0% { transform: rotate(0deg); }
+    100% { transform: rotate(360deg); }
+}

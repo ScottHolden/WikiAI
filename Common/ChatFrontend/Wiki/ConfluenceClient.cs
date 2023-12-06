@@ -28,7 +28,7 @@ public class ConfluenceClient : IWikiClient
 		string? rawContent = (string?)resp?["body"]?["export_view"]?["value"];
 		if (string.IsNullOrWhiteSpace(rawContent)) throw new Exception();
 
-		return new WikiPage((string?)resp?["title"] ?? "", s_cleanupRegex.Replace(rawContent, ""), _hc.BaseAddress + "/wiki/" + ((string?)resp?["_links"]?["webui"] ?? "").TrimStart('/'));
+		return new WikiPage((string?)resp?["title"] ?? "", s_cleanupRegex.Replace(rawContent, ""), _hc.BaseAddress + "wiki/" + ((string?)resp?["_links"]?["webui"] ?? "").TrimStart('/'));
 	}
 	public async Task<string[]> ListPagesAsync()
 	{
