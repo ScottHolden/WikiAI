@@ -24,6 +24,8 @@
         
         <input type="radio" id="azureSearch" name="searchType" value="aisearch">
         <label for="azureSearch">Azure AI Search</label>
+
+        <button type="button" id="clearbutton">Reset</button>
     </form>
     </div>
     <div id="spinner"></div>
@@ -40,6 +42,12 @@
                 const newAnswerQuestion = document.createElement('h3');
                 newAnswerQuestion.innerText = question;
                 newAnswer.appendChild(newAnswerQuestion);
+
+                const newAnswerClose = document.createElement('button');
+                newAnswerClose.className = "close";
+                newAnswerClose.innerText = "X";
+                newAnswerClose.addEventListener("click", (e)=>{e.target.parentElement.remove();});
+                newAnswer.appendChild(newAnswerClose);
 
                 const newAnswerText = document.createElement('p');
                 newAnswerText.innerText = answer;
@@ -64,6 +72,8 @@
                     newAnswer.appendChild(newAnswerNotes);
                 }
 
+                // Defensive update
+                topSearch.className = "search";
                 answerBox.prepend(newAnswer);
             };
             askButton.addEventListener("click", (e)=>{
@@ -94,6 +104,10 @@
                     spinner.style.display = "none";
                     addAnswer(question, "Couldn't connect to the server, please try again.");
                 });
+            });
+            document.getElementById("clearbutton").addEventListener("click", (e)=>{
+                answerBox.innerHTML = "";
+                topSearch.className = "search new";
             });
         })();
     </script>
