@@ -21,6 +21,7 @@ public class AzureOpenAIChatCompletion
 	{
 		var chatMessages = new ChatMessage[] {
 			new ChatMessage(ChatRole.System, prompt),
+			// Cheeky little trick to emulate data coming back from a function call
 			new ChatMessage(ChatRole.Function, "Sources:\n" + string.Join("\n", sources.Select(x=>$"{x.Key}: \"\"\"{x.Value.ReplaceLineEndings(" ").Replace("\"","")}\"\"\""))){
 				Name = "Sources"
 			},

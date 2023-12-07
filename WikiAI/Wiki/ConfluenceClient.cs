@@ -1,4 +1,5 @@
-﻿using System.Text.Json.Nodes;
+﻿using System.Net.Http.Headers;
+using System.Text.Json.Nodes;
 using System.Text.RegularExpressions;
 using System.Web;
 
@@ -13,14 +14,13 @@ public class ConfluenceClient : IWikiClient
 		{
 			BaseAddress = new Uri(confluenceDomain)
 		};
-		_hc.DefaultRequestHeaders.Authorization = HttpClientHelpers.BuildBasicAuthHeader(confluenceEmail, confluenceKey);
+		_hc.DefaultRequestHeaders.Authorization = BuildBasicAuthHeader(confluenceEmail, confluenceKey);
 	}
 	public async Task<string[]> SearchAsync(string question, int limit = 5)
 	{
 		var resp = await _hc.GetFromJsonAsync<JsonNode>($"/wiki/rest/api/content/search?cql=text~\"{HttpUtility.UrlEncode(question.Replace("\"", ""))}\"&limit={limit}");
 		var ids = resp?["results"]?.AsArray().Select(x => (string?)x?["id"] ?? "").Where(x => !string.IsNullOrEmpty(x)).ToArray();
-		if (ids == null) throw new Exception();
-		return ids;
+		return ids ?? throw new Exception();
 	}
 	public async Task<WikiPage> GetContentAsync(string pageId)
 	{
@@ -34,8 +34,13 @@ public class ConfluenceClient : IWikiClient
 	{
 		var resp = await _hc.GetFromJsonAsync<JsonNode>($"/wiki/api/v2/pages?limit=100"); // TODO: Add pagination
 		var ids = resp?["results"]?.AsArray().Select(x => (string?)x?["id"] ?? "").Where(x => !string.IsNullOrEmpty(x)).ToArray();
-		if (ids == null) throw new Exception();
-		return ids;
+		return ids ?? throw new Exception();
+	}
+	private static AuthenticationHeaderValue BuildBasicAuthHeader(string username, string password)
+	{
+		var authenticationString = $"{username}:{password}";
+		var base64EncodedAuthenticationString = Convert.ToBase64String(System.Text.Encoding.UTF8.GetBytes(authenticationString));
+		return new AuthenticationHeaderValue("Basic", base64EncodedAuthenticationString);
 	}
 }
 

@@ -4,7 +4,6 @@ using Microsoft.AspNetCore.Mvc;
 using MongoDB.Driver;
 
 var builder = WebApplication.CreateBuilder(args);
-
 builder.Services.AddSingleton<WikiCopilot>();
 builder.Services.AddSingleton<IWikiClient>(x =>
 {
@@ -37,7 +36,7 @@ builder.Services.AddSingleton<IMongoDatabase>(x =>
 	var connectionString = config.RequiredConfigValue("MONGO_CONNECTIONSTRING");
 	var client = new MongoClient(connectionString);
 	var databaseName = config.ConfigValueOrDefault("MONGO_DATABASE", "wiki");
-	return client.GetDatabase(databaseName); ;
+	return client.GetDatabase(databaseName);
 });
 builder.Services.AddSingleton<VectorSearch>();
 builder.Services.AddSingleton<AzureAISearch>();
@@ -57,7 +56,7 @@ app.MapPost("/api/ask", async ([FromBody] AskRequest req, [FromServices] WikiCop
 );
 
 app.MapPost("/api/vector/init", async ([FromServices] VectorSearch vs) => await vs.BuildDatabaseAsync());
-app.MapPost("/api/aisearch/init", async ([FromServices] AzureAISearch aisearch) => await aisearch.BuildIndexAsync());
+app.MapPost("/api/aisearch/init", async ([FromServices] AzureAISearch ais) => await ais.BuildIndexAsync());
 
 app.Run();
 

@@ -17,25 +17,33 @@ public class AzureAISearch
 	{
 		List<string> results = new List<string>();
 		string[] pagesToIndex = await _wikiClient.ListPagesAsync();
-		List<AzureAISearchResult> pages = new();
+
+		List<AzureAISearchInsert> pages = new();
 		foreach (string pageId in pagesToIndex)
 		{
 			try
 			{
 				var page = await _wikiClient.GetContentAsync(pageId);
-				pages.Add(new AzureAISearchResult(pageId, pageId, page.Content, page.Title, page.Url));
+				var textToVector = $"{page.Title}\n{page.Content}".Trim();
+				// TODO: Break it up
+
+				float[] vector = await _azureOpenAI.GetEmbeddingAsync(textToVector);
+				pages.Add(new AzureAISearchInsert(pageId, pageId, page.Content, page.Title, page.Url, vector));
 			}
 			catch { results.Add($"Skipping {pageId}, couldn't get content"); }
 		}
+
 		var indexBatch = IndexDocumentsBatch.Upload(pages);
+
 		var result = await _searchClient.IndexDocumentsAsync(indexBatch);
+
+
 		results.AddRange(result.Value.Results.Select(x => $"{x.Key}: {x.Status} {x.ErrorMessage}"));
 		results.Add("Done!");
 		return results;
 	}
 	public async Task<AzureAISearchResult[]> SearchAsync(string question, int limit = 5)
 	{
-		bool highlights = true;
 		var vector = await _azureOpenAI.GetEmbeddingAsync(question);
 		var vectorSearchOptions = new VectorSearchOptions();
 		var vectorQuery = new VectorizedQuery(vector)
@@ -44,6 +52,7 @@ public class AzureAISearch
 		};
 		vectorQuery.Fields.Add("embedding");
 		vectorSearchOptions.Queries.Add(vectorQuery);
+		// TODO: Add highlight based responses
 		var searchOptions = new SearchOptions()
 		{
 			QueryType = SearchQueryType.Semantic,
@@ -61,19 +70,11 @@ public class AzureAISearch
 		List<AzureAISearchResult> results = new();
 		await foreach (var item in result.Value.GetResultsAsync())
 		{
-			/*if (highlights && item.Highlights)
-			{
-				results.AddRange(item.Highlights)
-				var r = item.Document with
-				{
-					content = item
-				}
-			}*/
-
 			results.Add(item.Document);
 			if (results.Count >= limit) break;
 		}
 		return results.ToArray();
 	}
 }
-public record AzureAISearchResult(string id, string pageId, string content, string pageTitle, string pageUrl);
+public record AzureAISearchResult(string pageId, string content, string pageTitle, string pageUrl);
+public record AzureAISearchInsert(string id, string pageId, string content, string pageTitle, string pageUrl, float[] embedding);

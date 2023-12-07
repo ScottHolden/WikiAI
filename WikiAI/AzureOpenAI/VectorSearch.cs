@@ -33,7 +33,7 @@ public class VectorSearch
 				// TODO: Break it up
 
 				// Generate the embedding/vector
-				var vector = await _azureOpenAI.GetEmbeddingAsync(textToVector);
+				float[] vector = await _azureOpenAI.GetEmbeddingAsync(textToVector);
 
 				// Upsert into CosmosDB
 				await UpsertVectorAsync(new PageToInsert(pageId, pageId, vector));
