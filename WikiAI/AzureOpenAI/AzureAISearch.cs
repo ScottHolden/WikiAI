@@ -1,6 +1,7 @@
 ﻿using Azure.Search.Documents;
 using Azure.Search.Documents.Models;
 
+namespace WikiAI;
 public class AzureAISearch
 {
 	private readonly SearchClient _searchClient;
@@ -15,7 +16,7 @@ public class AzureAISearch
 
 	public async Task<List<string>> BuildIndexAsync()
 	{
-		List<string> results = new List<string>();
+		List<string> results = new();
 		string[] pagesToIndex = await _wikiClient.ListPagesAsync();
 
 		List<AzureAISearchInsert> pages = new();

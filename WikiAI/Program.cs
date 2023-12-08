@@ -2,6 +2,7 @@ using Azure;
 using Azure.Search.Documents;
 using Microsoft.AspNetCore.Mvc;
 using MongoDB.Driver;
+using WikiAI;
 
 var builder = WebApplication.CreateBuilder(args);
 builder.Services.AddSingleton<WikiCopilot>();
@@ -16,7 +17,7 @@ builder.Services.AddSingleton<IWikiClient>(x =>
 builder.Services.AddSingleton<AzureOpenAIChatCompletion>(x =>
 {
 	var config = x.GetRequiredService<IConfiguration>();
-	Uri endpoint = new Uri(config.RequiredConfigValue("AOAI_ENDPOINT"));
+	Uri endpoint = new(config.RequiredConfigValue("AOAI_ENDPOINT"));
 	string key = config.RequiredConfigValue("AOAI_KEY");
 	string chatDeployment = config.RequiredConfigValue("AOAI_DEPLOYMENT_CHAT");
 	string embeddingDeployment = config.RequiredConfigValue("AOAI_DEPLOYMENT_EMBEDDING");
@@ -25,21 +26,70 @@ builder.Services.AddSingleton<AzureOpenAIChatCompletion>(x =>
 builder.Services.AddSingleton<SearchClient>(x =>
 {
 	var config = x.GetRequiredService<IConfiguration>();
-	var endpoint = config.RequiredConfigValue("AISEARCH_ENDPOINT");
-	var key = config.RequiredConfigValue("AISEARCH_KEY");
-	var index = config.RequiredConfigValue("AISEARCH_INDEX");
-	return new SearchClient(new Uri(endpoint), index, new AzureKeyCredential(key));
+	try
+	{
+		var endpoint = config.RequiredConfigValue("AISEARCH_ENDPOINT");
+		var key = config.RequiredConfigValue("AISEARCH_KEY");
+		var index = config.RequiredConfigValue("AISEARCH_INDEX");
+		return new SearchClient(new Uri(endpoint), index, new AzureKeyCredential(key));
+	}
+	catch (Exception ex)
+	{
+		x.GetService<ILogger>()?.LogWarning(ex, "Missing Azure AI Search Configuration");
+		return null!;
+	}
 });
 builder.Services.AddSingleton<IMongoDatabase>(x =>
 {
 	var config = x.GetRequiredService<IConfiguration>();
-	var connectionString = config.RequiredConfigValue("MONGO_CONNECTIONSTRING");
-	var client = new MongoClient(connectionString);
-	var databaseName = config.ConfigValueOrDefault("MONGO_DATABASE", "wiki");
-	return client.GetDatabase(databaseName);
+	try
+	{
+		var connectionString = config.RequiredConfigValue("MONGO_CONNECTIONSTRING");
+		var client = new MongoClient(connectionString);
+		var databaseName = config.ConfigValueOrDefault("MONGO_DATABASE", "wiki");
+		return client.GetDatabase(databaseName);
+	}
+	catch (Exception ex)
+	{
+		x.GetService<ILogger>()?.LogWarning(ex, "Missing MongoDB Configuration");
+		return null!;
+	}
 });
-builder.Services.AddSingleton<VectorSearch>();
-builder.Services.AddSingleton<AzureAISearch>();
+// Need to refactor this, messy way of doing optional service resolution
+builder.Services.AddSingleton<VectorSearch>(x =>
+{
+	var mongo = x.GetService<IMongoDatabase>();
+	if (mongo == null) return null!;
+
+	var wikiClient = x.GetRequiredService<IWikiClient>();
+	var chatCompletion = x.GetRequiredService<AzureOpenAIChatCompletion>();
+	return new VectorSearch(wikiClient, chatCompletion, mongo);
+});
+builder.Services.AddSingleton<AzureAISearch>(x =>
+{
+	var searchClient = x.GetService<SearchClient>();
+	if (searchClient == null) return null!;
+
+	var wikiClient = x.GetRequiredService<IWikiClient>();
+	var chatCompletion = x.GetRequiredService<AzureOpenAIChatCompletion>();
+	return new AzureAISearch(searchClient, wikiClient, chatCompletion);
+});
+builder.Services.AddSingleton<DirectToWikiStrategy>();
+builder.Services.AddSingleton<VectorSearchWikiStrategy>(x =>
+{
+	var vectorSearch = x.GetService<VectorSearch>();
+	if (vectorSearch == null) return null!;
+
+	var wikiClient = x.GetRequiredService<IWikiClient>();
+	return new VectorSearchWikiStrategy(wikiClient, vectorSearch);
+});
+builder.Services.AddSingleton<AzureAISearchStrategy>(x =>
+{
+	var aiSearch = x.GetService<AzureAISearch>();
+	if (aiSearch == null) return null!;
+
+	return new AzureAISearchStrategy(aiSearch);
+});
 
 var app = builder.Build();
 app.UseHttpsRedirection();
@@ -55,8 +105,16 @@ app.MapPost("/api/ask", async ([FromBody] AskRequest req, [FromServices] WikiCop
 	}
 );
 
-app.MapPost("/api/vector/init", async ([FromServices] VectorSearch vs) => await vs.BuildDatabaseAsync());
-app.MapPost("/api/aisearch/init", async ([FromServices] AzureAISearch ais) => await ais.BuildIndexAsync());
+app.MapPost("/api/vector/init", async ([FromServices] VectorSearch? vs) =>
+{
+	if (vs == null) return new List<string> { "Couldn't init vector db, missing configuration" };
+	return await vs.BuildDatabaseAsync();
+});
+app.MapPost("/api/aisearch/init", async ([FromServices] AzureAISearch? ais) =>
+{
+	if (ais == null) return new List<string> { "Couldn't init Azure AI Search, missing configuration" };
+	return await ais.BuildIndexAsync();
+});
 
 app.Run();
 
