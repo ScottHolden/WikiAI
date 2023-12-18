@@ -13,20 +13,17 @@ public class VectorSearch
 		_vectors = mongoDatabase.GetCollection<BsonDocument>("vectors"); ;
 	}
 
-	public async Task<List<string>> BuildDatabaseAsync()
+	public async Task<List<string>> BuildDatabaseAsync(IReadOnlyList<WikiPage> pages)
 	{
-		List<string> results = new List<string>();
+		List<string> results = new();
 		await CreateIndexAsync(_vectors);
 		results.Add("Created index");
 		int failureCount = 0;
-		string[] pages = await _wikiClient.ListPagesAsync();
-		foreach (string pageId in pages)
+
+		foreach (var pageContent in pages)
 		{
 			try
 			{
-				// Get the text to add to the vector store
-				var pageContent = await _wikiClient.GetContentAsync(pageId);
-
 				// Do whole page at once for the moment
 				var textToVector = $"{pageContent.Title}\n{pageContent.Content}".Trim();
 				if (string.IsNullOrWhiteSpace(textToVector)) continue;
@@ -36,15 +33,15 @@ public class VectorSearch
 				float[] vector = await _azureOpenAI.GetEmbeddingAsync(textToVector);
 
 				// Upsert into CosmosDB
-				await UpsertVectorAsync(new PageToInsert(pageId, pageId, vector));
-				results.Add($"Added page {pageId}");
+				await UpsertVectorAsync(new PageToInsert(pageContent.PageId, pageContent.PageId, vector));
+				results.Add($"Added page {pageContent.PageId}");
 
 				// Try not to spam the API too hard!
 				await Task.Delay(200);
 			}
 			catch (Exception e)
 			{
-				results.Add($"Error adding page {pageId}: {e.Message}");
+				results.Add($"Error adding page {pageContent.PageId}: {e.Message}");
 				failureCount++;
 				if (failureCount > 5) return results;
 			}

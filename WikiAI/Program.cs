@@ -1,5 +1,6 @@
 using Azure;
 using Azure.Search.Documents;
+using Azure.Search.Documents.Indexes;
 using Microsoft.AspNetCore.Mvc;
 using MongoDB.Driver;
 using WikiAI;
@@ -39,6 +40,21 @@ builder.Services.AddSingleton<SearchClient>(x =>
 		return null!;
 	}
 });
+builder.Services.AddSingleton<SearchIndexClient>(x =>
+{
+	var config = x.GetRequiredService<IConfiguration>();
+	try
+	{
+		var endpoint = config.RequiredConfigValue("AISEARCH_ENDPOINT");
+		var key = config.RequiredConfigValue("AISEARCH_KEY");
+		return new SearchIndexClient(new Uri(endpoint), new AzureKeyCredential(key));
+	}
+	catch (Exception ex)
+	{
+		x.GetService<ILogger>()?.LogWarning(ex, "Missing Azure AI Search Configuration");
+		return null!;
+	}
+});
 builder.Services.AddSingleton<IMongoDatabase>(x =>
 {
 	var config = x.GetRequiredService<IConfiguration>();
@@ -70,9 +86,12 @@ builder.Services.AddSingleton<AzureAISearch>(x =>
 	var searchClient = x.GetService<SearchClient>();
 	if (searchClient == null) return null!;
 
+	var searchIndexClient = x.GetService<SearchIndexClient>();
+	if (searchIndexClient == null) return null!;
+
 	var wikiClient = x.GetRequiredService<IWikiClient>();
 	var chatCompletion = x.GetRequiredService<AzureOpenAIChatCompletion>();
-	return new AzureAISearch(searchClient, wikiClient, chatCompletion);
+	return new AzureAISearch(searchIndexClient, searchClient, wikiClient, chatCompletion);
 });
 builder.Services.AddSingleton<DirectToWikiStrategy>();
 builder.Services.AddSingleton<VectorSearchWikiStrategy>(x =>
@@ -104,18 +123,32 @@ app.MapPost("/api/ask", async ([FromBody] AskRequest req, [FromServices] WikiCop
 		_ => await wc.AskDirectToWikiAsync(req.question)
 	}
 );
+app.MapPost("/api/init", async ([FromServices] IWikiClient wikiClient, [FromServices] AzureAISearch? aiSearch, [FromServices] VectorSearch? vectorSearch)
+	=>
+	{
+		if (aiSearch == null && vectorSearch == null) return "Init skipped, neither Vector Search or AI Search was configured";
+		await InitAsync(wikiClient, aiSearch, vectorSearch);
+		if (vectorSearch == null) return "Vector Search init complete (AI Search was skipped as not configured)";
+		if (aiSearch == null) return "AI Search init complete (Vector Search was skipped as not configured)";
+		return "Vector Search & AI Search init complete";
+	}
+);
 
-app.MapPost("/api/vector/init", async ([FromServices] VectorSearch? vs) =>
-{
-	if (vs == null) return new List<string> { "Couldn't init vector db, missing configuration" };
-	return await vs.BuildDatabaseAsync();
-});
-app.MapPost("/api/aisearch/init", async ([FromServices] AzureAISearch? ais) =>
-{
-	if (ais == null) return new List<string> { "Couldn't init Azure AI Search, missing configuration" };
-	return await ais.BuildIndexAsync();
-});
-
+// Auto init!
+var initTask = InitFromServicesAsync(app.Services);
 app.Run();
 
+
+static async Task InitAsync(IWikiClient wikiClient, AzureAISearch? aiSearch, VectorSearch? vectorSearch)
+{
+	if (aiSearch == null && vectorSearch == null) return;
+	var pagesToInit = await wikiClient.GetAllPagesAsync();
+	// TODO: Pre-vectorize here instead of per service
+	if (vectorSearch != null) await vectorSearch.BuildDatabaseAsync(pagesToInit);
+	if (aiSearch != null) await aiSearch.BuildIndexAsync(pagesToInit);
+}
+static Task InitFromServicesAsync(IServiceProvider serviceProvider)
+	=> InitAsync(serviceProvider.GetRequiredService<IWikiClient>(),
+					serviceProvider.GetService<AzureAISearch>(),
+					serviceProvider.GetService<VectorSearch>());
 public record AskRequest(string question);
