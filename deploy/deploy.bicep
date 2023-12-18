@@ -162,7 +162,7 @@ resource containerApp 'Microsoft.App/containerApps@2023-05-02-preview' = if (dep
     configuration: {
       ingress: {
         external: true
-        targetPort: 80
+        targetPort: 8080
         allowInsecure: false
         traffic: [
           {
@@ -186,7 +186,7 @@ resource containerApp 'Microsoft.App/containerApps@2023-05-02-preview' = if (dep
         }
         {
           name: 'aisearchkey'
-          value: deployAzureAISearch ? aisearch.listKeys().primaryKey : ''
+          value: deployAzureAISearch ? aisearch.listAdminKeys().primaryKey : ''
         }
       ]
     }

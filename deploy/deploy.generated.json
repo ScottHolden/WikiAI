@@ -5,7 +5,7 @@
     "_generator": {
       "name": "bicep",
       "version": "0.24.24.22086",
-      "templateHash": "14917125680577306006"
+      "templateHash": "10924772369243011790"
     }
   },
   "parameters": {
@@ -253,7 +253,7 @@
         "configuration": {
           "ingress": {
             "external": true,
-            "targetPort": 80,
+            "targetPort": 8080,
             "allowInsecure": false,
             "traffic": [
               {
@@ -277,7 +277,7 @@
             },
             {
               "name": "aisearchkey",
-              "value": "[if(parameters('deployAzureAISearch'), listKeys(resourceId('Microsoft.Search/searchServices', variables('uniqueShortName')), '2023-11-01').primaryKey, '')]"
+              "value": "[if(parameters('deployAzureAISearch'), listAdminKeys(resourceId('Microsoft.Search/searchServices', variables('uniqueShortName')), '2023-11-01').primaryKey, '')]"
             }
           ]
         },
