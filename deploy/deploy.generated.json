@@ -4,8 +4,8 @@
   "metadata": {
     "_generator": {
       "name": "bicep",
-      "version": "0.23.1.45101",
-      "templateHash": "2682932508098348370"
+      "version": "0.24.24.22086",
+      "templateHash": "3039379047803501362"
     }
   },
   "parameters": {
@@ -34,14 +34,56 @@
     "allowAllFirewall": {
       "type": "bool",
       "defaultValue": true
+    },
+    "deployMongovCore": {
+      "type": "bool",
+      "defaultValue": true
+    },
+    "deployAzureAISearch": {
+      "type": "bool",
+      "defaultValue": true
+    },
+    "deployAzureOpenAI": {
+      "type": "bool",
+      "defaultValue": true
+    },
+    "deployWikiAIContainerApp": {
+      "type": "bool",
+      "defaultValue": true
+    },
+    "containerAppImage": {
+      "type": "string",
+      "defaultValue": "ghcr.io/scottholden/wikiai:release"
+    },
+    "confluenceDomain": {
+      "type": "string",
+      "defaultValue": ""
+    },
+    "confluenceEmail": {
+      "type": "string",
+      "defaultValue": ""
+    },
+    "confluenceApiKey": {
+      "type": "string",
+      "defaultValue": ""
+    },
+    "tags": {
+      "type": "object",
+      "defaultValue": {},
+      "metadata": {
+        "description": "Tags to apply to all deployed resources"
+      }
     }
   },
   "variables": {
+    "uniqueNameFormat": "[format('{0}-{{0}}-{1}', parameters('prefix'), uniqueString(resourceGroup().id, parameters('prefix')))]",
     "uniqueShortNameFormat": "[toLower(format('{0}{{0}}{1}', parameters('prefix'), uniqueString(resourceGroup().id, parameters('prefix'))))]",
-    "uniqueShortName": "[format(variables('uniqueShortNameFormat'), '')]"
+    "uniqueShortName": "[format(variables('uniqueShortNameFormat'), '')]",
+    "mongoConnectionString": "mongodb+srv://{0}:{1}@{2}.global.mongocluster.cosmos.azure.com/?tls=true&authMechanism=SCRAM-SHA-256&retrywrites=false&maxIdleTimeMS=120000"
   },
   "resources": [
     {
+      "condition": "[parameters('deployMongovCore')]",
       "type": "Microsoft.DocumentDB/mongoClusters/firewallRules",
       "apiVersion": "2023-09-15-preview",
       "name": "[format('{0}/{1}', variables('uniqueShortName'), 'AllowAllAzureServices')]",
@@ -54,7 +96,7 @@
       ]
     },
     {
-      "condition": "[parameters('allowAllFirewall')]",
+      "condition": "[and(parameters('deployMongovCore'), parameters('allowAllFirewall'))]",
       "type": "Microsoft.DocumentDB/mongoClusters/firewallRules",
       "apiVersion": "2023-09-15-preview",
       "name": "[format('{0}/{1}', variables('uniqueShortName'), 'AllowAll')]",
@@ -67,6 +109,51 @@
       ]
     },
     {
+      "condition": "[parameters('deployAzureOpenAI')]",
+      "type": "Microsoft.CognitiveServices/accounts/deployments",
+      "apiVersion": "2023-10-01-preview",
+      "name": "[format('{0}/{1}', format(variables('uniqueNameFormat'), 'openai'), 'gpt-35-turbo-16k')]",
+      "sku": {
+        "name": "Standard",
+        "capacity": 75
+      },
+      "properties": {
+        "model": {
+          "format": "OpenAI",
+          "name": "gpt-35-turbo-16k"
+        },
+        "dynamicThrottlingEnabled": true,
+        "versionUpgradeOption": "OnceNewDefaultVersionAvailable"
+      },
+      "dependsOn": [
+        "[resourceId('Microsoft.CognitiveServices/accounts', format(variables('uniqueNameFormat'), 'openai'))]"
+      ]
+    },
+    {
+      "condition": "[parameters('deployAzureOpenAI')]",
+      "type": "Microsoft.CognitiveServices/accounts/deployments",
+      "apiVersion": "2023-10-01-preview",
+      "name": "[format('{0}/{1}', format(variables('uniqueNameFormat'), 'openai'), 'text-embedding-ada-002')]",
+      "sku": {
+        "name": "Standard",
+        "capacity": 75
+      },
+      "properties": {
+        "model": {
+          "format": "OpenAI",
+          "name": "text-embedding-ada-002",
+          "version": "2"
+        },
+        "dynamicThrottlingEnabled": true,
+        "versionUpgradeOption": "OnceNewDefaultVersionAvailable"
+      },
+      "dependsOn": [
+        "[resourceId('Microsoft.CognitiveServices/accounts/deployments', format(variables('uniqueNameFormat'), 'openai'), 'gpt-35-turbo-16k')]",
+        "[resourceId('Microsoft.CognitiveServices/accounts', format(variables('uniqueNameFormat'), 'openai'))]"
+      ]
+    },
+    {
+      "condition": "[parameters('deployMongovCore')]",
       "type": "Microsoft.DocumentDB/mongoClusters",
       "apiVersion": "2023-09-15-preview",
       "name": "[variables('uniqueShortName')]",
@@ -78,14 +165,15 @@
           {
             "kind": "Shard",
             "nodeCount": 1,
-            "sku": "M40",
-            "diskSizeGB": 128,
+            "sku": "M25",
+            "diskSizeGB": 64,
             "enableHa": false
           }
         ]
       }
     },
     {
+      "condition": "[parameters('deployAzureAISearch')]",
       "type": "Microsoft.Search/searchServices",
       "apiVersion": "2023-11-01",
       "name": "[variables('uniqueShortName')]",
@@ -100,6 +188,181 @@
         "publicNetworkAccess": "enabled",
         "semanticSearch": "free"
       }
+    },
+    {
+      "condition": "[parameters('deployAzureOpenAI')]",
+      "type": "Microsoft.CognitiveServices/accounts",
+      "apiVersion": "2023-05-01",
+      "name": "[format(variables('uniqueNameFormat'), 'openai')]",
+      "location": "[parameters('location')]",
+      "kind": "OpenAI",
+      "sku": {
+        "name": "S0"
+      },
+      "properties": {
+        "customSubDomainName": "[format(variables('uniqueNameFormat'), 'openai')]"
+      },
+      "tags": "[parameters('tags')]"
+    },
+    {
+      "condition": "[parameters('deployWikiAIContainerApp')]",
+      "type": "Microsoft.OperationalInsights/workspaces",
+      "apiVersion": "2022-10-01",
+      "name": "[variables('uniqueShortName')]",
+      "location": "[parameters('location')]",
+      "properties": {
+        "retentionInDays": 30,
+        "sku": {
+          "name": "PerGB2018"
+        }
+      }
+    },
+    {
+      "condition": "[parameters('deployWikiAIContainerApp')]",
+      "type": "Microsoft.App/managedEnvironments",
+      "apiVersion": "2022-06-01-preview",
+      "name": "[variables('uniqueShortName')]",
+      "location": "[parameters('location')]",
+      "sku": {
+        "name": "Consumption"
+      },
+      "properties": {
+        "appLogsConfiguration": {
+          "destination": "log-analytics",
+          "logAnalyticsConfiguration": {
+            "customerId": "[reference(resourceId('Microsoft.OperationalInsights/workspaces', variables('uniqueShortName')), '2022-10-01').customerId]",
+            "sharedKey": "[listKeys(resourceId('Microsoft.OperationalInsights/workspaces', variables('uniqueShortName')), '2022-10-01').primarySharedKey]"
+          }
+        }
+      },
+      "dependsOn": [
+        "[resourceId('Microsoft.OperationalInsights/workspaces', variables('uniqueShortName'))]"
+      ]
+    },
+    {
+      "condition": "[parameters('deployWikiAIContainerApp')]",
+      "type": "Microsoft.App/containerApps",
+      "apiVersion": "2023-05-02-preview",
+      "name": "[variables('uniqueShortName')]",
+      "location": "[parameters('location')]",
+      "identity": {
+        "type": "SystemAssigned"
+      },
+      "properties": {
+        "managedEnvironmentId": "[resourceId('Microsoft.App/managedEnvironments', variables('uniqueShortName'))]",
+        "configuration": {
+          "ingress": {
+            "external": true,
+            "targetPort": 80,
+            "allowInsecure": false,
+            "traffic": [
+              {
+                "latestRevision": true,
+                "weight": 100
+              }
+            ]
+          },
+          "secrets": [
+            {
+              "name": "CONFLUENCE_API_KEY",
+              "value": "[parameters('confluenceApiKey')]"
+            },
+            {
+              "name": "AOAI_KEY",
+              "value": "[if(parameters('deployAzureOpenAI'), listKeys(resourceId('Microsoft.CognitiveServices/accounts', format(variables('uniqueNameFormat'), 'openai')), '2023-05-01').key1, '')]"
+            },
+            {
+              "name": "MONGO_CONNECTIONSTRING",
+              "value": "[if(parameters('deployMongovCore'), format(variables('mongoConnectionString'), parameters('mongoUsername'), parameters('mongoPassword'), variables('uniqueShortName')), '')]"
+            },
+            {
+              "name": "AISEARCH_KEY",
+              "value": "[if(parameters('deployAzureAISearch'), listKeys(resourceId('Microsoft.Search/searchServices', variables('uniqueShortName')), '2023-11-01').primaryKey, '')]"
+            }
+          ]
+        },
+        "template": {
+          "revisionSuffix": "release",
+          "containers": [
+            {
+              "name": "wikiai",
+              "image": "[parameters('containerAppImage')]",
+              "resources": {
+                "cpu": "[json('.25')]",
+                "memory": ".5Gi"
+              },
+              "env": [
+                {
+                  "name": "CONFLUENCE_API_KEY",
+                  "secretRef": "CONFLUENCE_API_KEY"
+                },
+                {
+                  "name": "CONFLUENCE_DOMAIN",
+                  "value": "[parameters('confluenceDomain')]"
+                },
+                {
+                  "name": "CONFLUENCE_EMAIL",
+                  "value": "[parameters('confluenceEmail')]"
+                },
+                {
+                  "name": "AOAI_ENDPOINT",
+                  "value": "[if(parameters('deployAzureOpenAI'), reference(resourceId('Microsoft.CognitiveServices/accounts', format(variables('uniqueNameFormat'), 'openai')), '2023-05-01').endpoint, '')]"
+                },
+                {
+                  "name": "AOAI_KEY",
+                  "secretRef": "AOAI_KEY"
+                },
+                {
+                  "name": "AOAI_DEPLOYMENT_CHAT",
+                  "value": "[if(parameters('deployAzureOpenAI'), 'gpt-35-turbo-16k', '')]"
+                },
+                {
+                  "name": "AOAI_DEPLOYMENT_EMBEDDING",
+                  "value": "[if(parameters('deployAzureOpenAI'), 'text-embedding-ada-002', '')]"
+                },
+                {
+                  "name": "MONGO_CONNECTIONSTRING",
+                  "secretRef": "MONGO_CONNECTIONSTRING"
+                },
+                {
+                  "name": "AISEARCH_ENDPOINT",
+                  "value": "[if(parameters('deployAzureAISearch'), format('https://{0}.search.windows.net', variables('uniqueShortName')), '')]"
+                },
+                {
+                  "name": "AISEARCH_KEY",
+                  "secretRef": "AISEARCH_KEY"
+                },
+                {
+                  "name": "AISEARCH_INDEX",
+                  "value": "wiki"
+                }
+              ]
+            }
+          ],
+          "scale": {
+            "minReplicas": 0,
+            "maxReplicas": 1,
+            "rules": [
+              {
+                "name": "http-requests",
+                "http": {
+                  "metadata": {
+                    "concurrentRequests": "50"
+                  }
+                }
+              }
+            ]
+          }
+        }
+      },
+      "dependsOn": [
+        "[resourceId('Microsoft.Search/searchServices', variables('uniqueShortName'))]",
+        "[resourceId('Microsoft.App/managedEnvironments', variables('uniqueShortName'))]",
+        "[resourceId('Microsoft.CognitiveServices/accounts/deployments', format(variables('uniqueNameFormat'), 'openai'), 'text-embedding-ada-002')]",
+        "[resourceId('Microsoft.CognitiveServices/accounts/deployments', format(variables('uniqueNameFormat'), 'openai'), 'gpt-35-turbo-16k')]",
+        "[resourceId('Microsoft.DocumentDB/mongoClusters', variables('uniqueShortName'))]",
+        "[resourceId('Microsoft.CognitiveServices/accounts', format(variables('uniqueNameFormat'), 'openai'))]"
+      ]
     }
   ]
 }
