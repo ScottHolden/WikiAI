@@ -5,7 +5,7 @@
     "_generator": {
       "name": "bicep",
       "version": "0.24.24.22086",
-      "templateHash": "3039379047803501362"
+      "templateHash": "14917125680577306006"
     }
   },
   "parameters": {
@@ -264,19 +264,19 @@
           },
           "secrets": [
             {
-              "name": "CONFLUENCE_API_KEY",
+              "name": "confluenceapikey",
               "value": "[parameters('confluenceApiKey')]"
             },
             {
-              "name": "AOAI_KEY",
+              "name": "aoaikey",
               "value": "[if(parameters('deployAzureOpenAI'), listKeys(resourceId('Microsoft.CognitiveServices/accounts', format(variables('uniqueNameFormat'), 'openai')), '2023-05-01').key1, '')]"
             },
             {
-              "name": "MONGO_CONNECTIONSTRING",
+              "name": "mongoconnectionstring",
               "value": "[if(parameters('deployMongovCore'), format(variables('mongoConnectionString'), parameters('mongoUsername'), parameters('mongoPassword'), variables('uniqueShortName')), '')]"
             },
             {
-              "name": "AISEARCH_KEY",
+              "name": "aisearchkey",
               "value": "[if(parameters('deployAzureAISearch'), listKeys(resourceId('Microsoft.Search/searchServices', variables('uniqueShortName')), '2023-11-01').primaryKey, '')]"
             }
           ]
@@ -294,7 +294,7 @@
               "env": [
                 {
                   "name": "CONFLUENCE_API_KEY",
-                  "secretRef": "CONFLUENCE_API_KEY"
+                  "secretRef": "confluenceapikey"
                 },
                 {
                   "name": "CONFLUENCE_DOMAIN",
@@ -310,7 +310,7 @@
                 },
                 {
                   "name": "AOAI_KEY",
-                  "secretRef": "AOAI_KEY"
+                  "secretRef": "aoaikey"
                 },
                 {
                   "name": "AOAI_DEPLOYMENT_CHAT",
@@ -322,7 +322,7 @@
                 },
                 {
                   "name": "MONGO_CONNECTIONSTRING",
-                  "secretRef": "MONGO_CONNECTIONSTRING"
+                  "secretRef": "mongoconnectionstring"
                 },
                 {
                   "name": "AISEARCH_ENDPOINT",
@@ -330,7 +330,7 @@
                 },
                 {
                   "name": "AISEARCH_KEY",
-                  "secretRef": "AISEARCH_KEY"
+                  "secretRef": "aisearchkey"
                 },
                 {
                   "name": "AISEARCH_INDEX",

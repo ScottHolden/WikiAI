@@ -173,19 +173,19 @@ resource containerApp 'Microsoft.App/containerApps@2023-05-02-preview' = if (dep
       }
       secrets: [
         {
-          name: 'CONFLUENCE_API_KEY'
+          name: 'confluenceapikey'
           value: confluenceApiKey
         }
         {
-          name: 'AOAI_KEY'
+          name: 'aoaikey'
           value: deployAzureOpenAI ? openai.listKeys().key1 : ''
         }
         {
-          name: 'MONGO_CONNECTIONSTRING'
+          name: 'mongoconnectionstring'
           value: deployMongovCore ? format(mongoConnectionString, mongoUsername, mongoPassword, mongo.name) : ''
         }
         {
-          name: 'AISEARCH_KEY'
+          name: 'aisearchkey'
           value: deployAzureAISearch ? aisearch.listKeys().primaryKey : ''
         }
       ]
@@ -203,7 +203,7 @@ resource containerApp 'Microsoft.App/containerApps@2023-05-02-preview' = if (dep
           env: [
             {
               name: 'CONFLUENCE_API_KEY'
-              secretRef: 'CONFLUENCE_API_KEY'
+              secretRef: 'confluenceapikey'
             }
             {
               name: 'CONFLUENCE_DOMAIN'
@@ -219,7 +219,7 @@ resource containerApp 'Microsoft.App/containerApps@2023-05-02-preview' = if (dep
             }
             {
               name: 'AOAI_KEY'
-              secretRef: 'AOAI_KEY'
+              secretRef: 'aoaikey'
             }
             {
               name: 'AOAI_DEPLOYMENT_CHAT'
@@ -231,7 +231,7 @@ resource containerApp 'Microsoft.App/containerApps@2023-05-02-preview' = if (dep
             }
             {
               name: 'MONGO_CONNECTIONSTRING'
-              secretRef: 'MONGO_CONNECTIONSTRING'
+              secretRef: 'mongoconnectionstring'
             }
             {
               name: 'AISEARCH_ENDPOINT'
@@ -239,7 +239,7 @@ resource containerApp 'Microsoft.App/containerApps@2023-05-02-preview' = if (dep
             }
             {
               name: 'AISEARCH_KEY'
-              secretRef: 'AISEARCH_KEY'
+              secretRef: 'aisearchkey'
             }
             {
               name: 'AISEARCH_INDEX'
