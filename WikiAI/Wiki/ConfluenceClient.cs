@@ -8,13 +8,13 @@ public class ConfluenceClient : IWikiClient
 	private static readonly Regex s_cleanupRegex = new("<[^>]+>", RegexOptions.Compiled);
 	private readonly HttpClient _hc;
 
-	public ConfluenceClient(string confluenceDomain, string confluenceEmail, string confluenceKey)
+	public ConfluenceClient(ConfluenceClientConfig config)
 	{
 		_hc = new HttpClient()
 		{
-			BaseAddress = new Uri(confluenceDomain)
+			BaseAddress = new Uri(config.CONFLUENCE_DOMAIN)
 		};
-		_hc.DefaultRequestHeaders.Authorization = BuildBasicAuthHeader(confluenceEmail, confluenceKey);
+		_hc.DefaultRequestHeaders.Authorization = BuildBasicAuthHeader(config.CONFLUENCE_EMAIL, config.CONFLUENCE_API_KEY);
 	}
 	public async Task<string[]> SearchAsync(string question, int limit = 5)
 	{

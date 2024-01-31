@@ -8,7 +8,6 @@ public class AzureAISearch
 {
 	private readonly SearchIndexClient _searchIndexClient;
 	private readonly SearchClient _searchClient;
-	private readonly IWikiClient _wikiClient;
 	private readonly AzureOpenAIChatCompletion _azureOpenAI;
 
 	private const string VectorAlgorithmName = "vector-hnsw-400";
@@ -18,12 +17,10 @@ public class AzureAISearch
 	public AzureAISearch(
 		SearchIndexClient searchIndexClient,
 		SearchClient searchClient,
-		IWikiClient wikiClient,
 		AzureOpenAIChatCompletion azureOpenAI)
 	{
 		_searchIndexClient = searchIndexClient;
 		_searchClient = searchClient;
-		_wikiClient = wikiClient;
 		_azureOpenAI = azureOpenAI;
 	}
 
@@ -168,5 +165,3 @@ public class AzureAISearch
 		return results.ToArray();
 	}
 }
-public record AzureAISearchResult(string pageId, string content, string pageTitle, string pageUrl);
-public record AzureAISearchInsert(string id, string pageId, string content, string pageTitle, string pageUrl, float[] embedding);

@@ -1,47 +1,33 @@
 ﻿using MongoDB.Bson;
 using MongoDB.Driver;
 
-public class VectorSearch
+public class VectorSearch : IVectorSearch
 {
 	private readonly IMongoCollection<BsonDocument> _vectors;
-	private readonly IWikiClient _wikiClient;
 	private readonly AzureOpenAIChatCompletion _azureOpenAI;
-	public VectorSearch(IWikiClient wikiClient, AzureOpenAIChatCompletion azureOpenAI, IMongoDatabase mongoDatabase)
+	public VectorSearch(AzureOpenAIChatCompletion azureOpenAI, IMongoDatabase mongoDatabase)
 	{
-		_wikiClient = wikiClient;
 		_azureOpenAI = azureOpenAI;
 		_vectors = mongoDatabase.GetCollection<BsonDocument>("vectors"); ;
 	}
 
-	public async Task<List<string>> BuildDatabaseAsync(IReadOnlyList<WikiPage> pages)
+	public async Task<List<string>> BuildDatabaseAsync(IReadOnlyList<VectorChunk> chunks)
 	{
 		List<string> results = new();
 		await CreateIndexAsync(_vectors);
 		results.Add("Created index");
 		int failureCount = 0;
 
-		foreach (var pageContent in pages)
+		foreach (var chunk in chunks)
 		{
 			try
 			{
-				// Do whole page at once for the moment
-				var textToVector = $"{pageContent.Title}\n{pageContent.Content}".Trim();
-				if (string.IsNullOrWhiteSpace(textToVector)) continue;
-				// TODO: Break it up
-
-				// Generate the embedding/vector
-				float[] vector = await _azureOpenAI.GetEmbeddingAsync(textToVector);
-
-				// Upsert into CosmosDB
-				await UpsertVectorAsync(new PageToInsert(pageContent.PageId, pageContent.PageId, vector));
-				results.Add($"Added page {pageContent.PageId}");
-
-				// Try not to spam the API too hard!
-				await Task.Delay(200);
+				await UpsertVectorAsync(new PageToInsert(chunk.PageId, chunk.PageId, chunk.Vector));
+				results.Add($"Added page {chunk.PageId}");
 			}
 			catch (Exception e)
 			{
-				results.Add($"Error adding page {pageContent.PageId}: {e.Message}");
+				results.Add($"Error adding page {chunk.PageId}: {e.Message}");
 				failureCount++;
 				if (failureCount > 5) return results;
 			}

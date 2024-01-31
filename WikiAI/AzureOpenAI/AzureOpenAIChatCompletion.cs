@@ -6,16 +6,16 @@ public class AzureOpenAIChatCompletion
 	private readonly OpenAIClient _openAIClient;
 	private readonly string _deploymentName;
 	private readonly string _embeddingDeployment;
-	public AzureOpenAIChatCompletion(Uri endpoint, string key, string chatDeployment, string embeddingDeployment)
+	public AzureOpenAIChatCompletion(AzureOpenAIConfig config)
 	{
-		_openAIClient = new OpenAIClient(endpoint, new AzureKeyCredential(key));
-		_deploymentName = chatDeployment;
-		_embeddingDeployment = embeddingDeployment;
+		_openAIClient = new OpenAIClient(new Uri(config.AOAI_ENDPOINT), new AzureKeyCredential(config.AOAI_KEY));
+		_deploymentName = config.AOAI_DEPLOYMENT_CHAT;
+		_embeddingDeployment = config.AOAI_DEPLOYMENT_EMBEDDING;
 	}
 	public async Task<float[]> GetEmbeddingAsync(string input)
 	{
 		var resp = await _openAIClient.GetEmbeddingsAsync(new EmbeddingsOptions(_embeddingDeployment, new[] { input }));
-		return resp.Value.Data[0].Embedding.ToArray(); // TODO: Clean up memeory usage
+		return resp.Value.Data[0].Embedding.ToArray(); // TODO: Clean up memory usage
 	}
 	public async Task<string> GetChatCompletionAsync(string prompt, Dictionary<string, string> sources, string message)
 	{
