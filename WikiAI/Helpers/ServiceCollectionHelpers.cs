@@ -1,3 +1,4 @@
+namespace WikiAI;
 public static class ServiceCollectionHelpers
 {
 	public static IServiceCollection BindConfiguration<T>(this IServiceCollection services, string sectionName) where T : class
@@ -10,10 +11,14 @@ public static class ServiceCollectionHelpers
 				?? throw new Exception($"Unable to bind to {typeof(T)}"));
 
 	public static IServiceCollection AddSingletonIfConfigured<T, V>(this IServiceCollection services, Func<V, T> init) where T : class where V : IConfigurable
-		=> services.AddSingleton((context) => {
-				V config = context.GetRequiredService<V>();
-				if (config.IsConfigured) return init(config);
-				context.GetService<ILogger>()?.LogWarning("{V} for {T} not configured", typeof(V), typeof(T));
-				return null!;
-			});
+		=> services.AddSingleton((context) =>
+		{
+			V config = context.GetRequiredService<V>();
+			if (config.IsConfigured) return init(config);
+			context.GetService<ILogger>()?.LogWarning("{V} for {T} not configured", typeof(V), typeof(T));
+			return null!;
+		});
+
+	public static bool IsConfigured<T>(this IServiceProvider services) where T : IConfigurable
+		=> services.GetRequiredService<T>().IsConfigured;
 }

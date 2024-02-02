@@ -2,13 +2,11 @@
 
 namespace WikiAI;
 
-public class WikiCopilot
+public class WikiCopilot(
+	AzureOpenAIChatCompletion _chatCompletion,
+	DirectToWikiStrategy _defaultStrategy,
+	IStrategy[] _strategies)
 {
-	private readonly AzureOpenAIChatCompletion _chatCompletion;
-	private readonly DirectToWikiStrategy _directToWikiStrategy;
-	private readonly VectorSearchWikiStrategy? _vectorSearchWikiStrategy;
-	private readonly AzureAISearchStrategy? _azureAISearchStrategy;
-
 	private const string WikiQuestionPrompt = """
 		You are an intelligent assistant helping developers with questions contained within a Wiki.
 		Use 'you' to refer to the individual asking the questions even if they ask with 'I'.
@@ -28,45 +26,28 @@ public class WikiCopilot
 		---
 		""";
 
-	public WikiCopilot(
-		AzureOpenAIChatCompletion chatCompletion,
-		DirectToWikiStrategy directToWikiStrategy,
-		VectorSearchWikiStrategy? vectorSearchWikiStrategy,
-		AzureAISearchStrategy? azureAISearchStrategy)
+	public async Task<AnswerResponse> AskViaStrategyAsync(string question, string? strategyName)
+		=> await AskViaStrategyAsync(question, FindStrategy(strategyName));
+	public async Task<AnswerResponse> AskViaStrategyAsync(string question, IStrategy strategy)
 	{
-		_chatCompletion = chatCompletion;
-		_directToWikiStrategy = directToWikiStrategy;
-		_vectorSearchWikiStrategy = vectorSearchWikiStrategy;
-		_azureAISearchStrategy = azureAISearchStrategy;
-	}
-
-	public async Task<AnswerResponse> AskDirectToWikiAsync(string question)
-	{
-		var resp = await _directToWikiStrategy.GetResponseAsync(question);
+		var resp = await strategy.GetResponseAsync(question);
 		return await GetFormattedResponseAsync(question, resp);
 	}
-
-	public async Task<AnswerResponse> AskWithVectorSearchAsync(string question)
+	private IStrategy FindStrategy(string? strategyName)
 	{
-		if (_vectorSearchWikiStrategy == null)
+		if (string.IsNullOrWhiteSpace(strategyName)) return _defaultStrategy;
+		foreach (var strategy in _strategies.Where(x => x != null))
 		{
-			return MissingConfigResponse("Error using Vector Search + Wiki: Vector database was not configured");
+			if (strategy.Name.Equals(strategyName, StringComparison.OrdinalIgnoreCase))
+			{
+				return strategy;
+			}
 		}
-		var resp = await _vectorSearchWikiStrategy.GetResponseAsync(question);
-		return await GetFormattedResponseAsync(question, resp);
+		return _defaultStrategy;
 	}
+	public IEnumerable<string> ListStrategies()
+		=> _strategies.Where(x => x != null).Select(x => x.Name);
 
-	public async Task<AnswerResponse> AskWithAzureAISearchAsync(string question)
-	{
-		if (_azureAISearchStrategy == null)
-		{
-			return MissingConfigResponse("Error using Azure AI Search: Azure AI Search was not configured");
-		}
-		var resp = await _azureAISearchStrategy.GetResponseAsync(question);
-		return await GetFormattedResponseAsync(question, resp);
-	}
-	private static AnswerResponse MissingConfigResponse(string message)
-	 => new(message, new(), "Check all required values are set within App Settings.", Array.Empty<AnswerReference>(), null);
 	private async Task<AnswerResponse> GetFormattedResponseAsync(string question, StrategyResponse sourcesToUse)
 	{
 		// If we don't have any references, we can't answer!

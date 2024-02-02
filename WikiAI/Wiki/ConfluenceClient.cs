@@ -3,6 +3,7 @@ using System.Text.Json.Nodes;
 using System.Text.RegularExpressions;
 using System.Web;
 
+namespace WikiAI;
 public class ConfluenceClient : IWikiClient
 {
 	private static readonly Regex s_cleanupRegex = new("<[^>]+>", RegexOptions.Compiled);

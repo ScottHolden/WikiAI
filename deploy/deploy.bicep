@@ -4,13 +4,14 @@ param location string = resourceGroup().location
 @description('A prefix to add to the start of all resource names. Note: A "unique" suffix will also be added')
 param prefix string = 'wiki'
 
-param mongoUsername string = 'wikivector'
+param databaseUsername string = 'wikivector'
 @secure()
-param mongoPassword string = '${uniqueString(newGuid())}-${uniqueString(newGuid())}'
+param databasePassword string = '${uniqueString(newGuid())}-${uniqueString(newGuid())}'
 
 param allowAllFirewall bool = true
 
-param deployMongovCore bool = true
+param deployPostgres bool = true
+param deployMongovCore bool = false
 param deployAzureAISearch bool = true
 param deployAzureOpenAI bool = true
 
@@ -28,13 +29,57 @@ var uniqueNameFormat = '${prefix}-{0}-${uniqueString(resourceGroup().id, prefix)
 var uniqueShortNameFormat = toLower('${prefix}{0}${uniqueString(resourceGroup().id, prefix)}')
 var uniqueShortName = format(uniqueShortNameFormat, '')
 var mongoConnectionString = 'mongodb+srv://{0}:{1}@{2}.global.mongocluster.cosmos.azure.com/?tls=true&authMechanism=SCRAM-SHA-256&retrywrites=false&maxIdleTimeMS=120000'
+var postgresConnectionString = 'Server={0};Database={1};Port=5432;User Id={2};Password={3};Ssl Mode=Require;'
+var postgresDatabaseName = 'wiki'
+
+resource postgres 'Microsoft.DBforPostgreSQL/flexibleServers@2023-06-01-preview' = if (deployPostgres) {
+  name: uniqueShortName
+  location: location
+  sku: {
+    name: 'Standard_B1ms'
+    tier: 'Burstable'
+  }
+  properties: {
+    administratorLogin: databaseUsername
+    administratorLoginPassword: databasePassword
+    storage: {
+      storageSizeGB: 32
+    }
+    createMode: 'Default'
+    version: '16'
+    backup: {
+      backupRetentionDays: 7
+      geoRedundantBackup: 'Disabled'
+    }
+    network: {
+      publicNetworkAccess: 'Enabled'
+    }
+    highAvailability: {
+      mode: 'Disabled'
+    }
+  }
+  resource config 'configurations@2023-06-01-preview' = {
+    name: 'azure.extensions'
+    properties: {
+      value: 'VECTOR'
+      source: 'user-override'
+    }
+  }
+  resource db 'databases@2023-06-01-preview' = {
+    name: postgresDatabaseName
+    properties: {
+      charset: 'UTF8'
+      collation: 'en_US.utf8'
+    }
+  }
+}
 
 resource mongo 'Microsoft.DocumentDB/mongoClusters@2023-09-15-preview' = if (deployMongovCore) {
   name: uniqueShortName
   location: location
   properties: {
-    administratorLogin: mongoUsername
-    administratorLoginPassword: mongoPassword
+    administratorLogin: databaseUsername
+    administratorLoginPassword: databasePassword
     nodeGroupSpecs: [
       {
         kind: 'Shard'
@@ -182,11 +227,15 @@ resource containerApp 'Microsoft.App/containerApps@2023-05-02-preview' = if (dep
         }
         {
           name: 'mongoconnectionstring'
-          value: deployMongovCore ? format(mongoConnectionString, mongoUsername, mongoPassword, mongo.name) : ''
+          value: deployMongovCore ? format(mongoConnectionString, databaseUsername, databasePassword, mongo.name) : ''
         }
         {
           name: 'aisearchkey'
           value: deployAzureAISearch ? aisearch.listAdminKeys().primaryKey : ''
+        }
+        {
+          name: 'postgresconnectionstring'
+          value: deployPostgres ? format(postgresConnectionString, postgres.properties.fullyQualifiedDomainName, postgres::db.name, databaseUsername, databasePassword) : ''
         }
       ]
     }
@@ -230,8 +279,12 @@ resource containerApp 'Microsoft.App/containerApps@2023-05-02-preview' = if (dep
               value: deployAzureOpenAI ? openai::embedding.name : ''
             }
             {
-              name: 'MONGO_CONNECTIONSTRING'
+              name: 'MONGO_CONNECTION_STRING'
               secretRef: 'mongoconnectionstring'
+            }
+            {
+              name: 'POSTGRES_CONNECTION_STRING'
+              secretRef: 'postgresconnectionstring'
             }
             {
               name: 'AISEARCH_ENDPOINT'

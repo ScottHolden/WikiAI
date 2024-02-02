@@ -26,7 +26,7 @@ public class AzureAISearchStrategy(
 		_config.AISEARCH_INDEX,
 		new AzureKeyCredential(_config.AISEARCH_KEY)
 	);
-
+	public string Name => "aiSearch";
 	public async Task BuildDatabaseAsync(IReadOnlyList<VectorChunk> chunks)
 	{
 		_logger.LogInformation("Creating search index...");
@@ -42,7 +42,7 @@ public class AzureAISearchStrategy(
 	{
 		var searchResults = await SearchAsync(question);
 
-		Dictionary<string, SourceReference> sources = new();
+		Dictionary<string, SourceReference> sources = [];
 		int length = 0;
 		foreach (var page in searchResults)
 		{
@@ -98,7 +98,7 @@ public class AzureAISearchStrategy(
 
 	private async Task<IEnumerable<AzureAISearchResult>> GetTopResultDocuments(SearchResults<AzureAISearchResult> results, int limit)
 	{
-		List<AzureAISearchResult> output = new();
+		List<AzureAISearchResult> output = [];
 		await foreach (var item in results.GetResultsAsync())
 		{
 			output.Add(item.Document);

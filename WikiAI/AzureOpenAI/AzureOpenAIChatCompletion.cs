@@ -1,17 +1,14 @@
 ﻿using Azure;
 using Azure.AI.OpenAI;
 
-public class AzureOpenAIChatCompletion
+namespace WikiAI;
+
+public class AzureOpenAIChatCompletion(AzureOpenAIConfig config)
 {
-	private readonly OpenAIClient _openAIClient;
-	private readonly string _deploymentName;
-	private readonly string _embeddingDeployment;
-	public AzureOpenAIChatCompletion(AzureOpenAIConfig config)
-	{
-		_openAIClient = new OpenAIClient(new Uri(config.AOAI_ENDPOINT), new AzureKeyCredential(config.AOAI_KEY));
-		_deploymentName = config.AOAI_DEPLOYMENT_CHAT;
-		_embeddingDeployment = config.AOAI_DEPLOYMENT_EMBEDDING;
-	}
+	private readonly OpenAIClient _openAIClient = new(new Uri(config.AOAI_ENDPOINT), new AzureKeyCredential(config.AOAI_KEY));
+	private readonly string _deploymentName = config.AOAI_DEPLOYMENT_CHAT;
+	private readonly string _embeddingDeployment = config.AOAI_DEPLOYMENT_EMBEDDING;
+
 	public async Task<float[]> GetEmbeddingAsync(string input)
 	{
 		var resp = await _openAIClient.GetEmbeddingsAsync(new EmbeddingsOptions(_embeddingDeployment, new[] { input }));
@@ -20,20 +17,20 @@ public class AzureOpenAIChatCompletion
 	public async Task<string> GetChatCompletionAsync(string prompt, Dictionary<string, string> sources, string message)
 	{
 		var chatMessages = new ChatMessage[] {
-			new ChatMessage(ChatRole.System, prompt),
+			new(ChatRole.System, prompt),
 			// Cheeky little trick to emulate data coming back from a function call
-			new ChatMessage(ChatRole.Function, "Sources:\n" + string.Join("\n", sources.Select(x=>$"{x.Key}: \"\"\"{x.Value.ReplaceLineEndings(" ").Replace("\"","")}\"\"\""))){
+			new(ChatRole.Function, "Sources:\n" + string.Join("\n", sources.Select(x=>$"{x.Key}: \"\"\"{x.Value.ReplaceLineEndings(" ").Replace("\"","")}\"\"\""))){
 				Name = "Sources"
 			},
-			new ChatMessage(ChatRole.User, message)
+			new(ChatRole.User, message)
 		};
 		return await GetChatCompletionAsync(chatMessages);
 	}
 	public async Task<string> GetChatCompletionAsync(string prompt, string message)
 	{
 		var chatMessages = new ChatMessage[] {
-			new ChatMessage(ChatRole.System, prompt),
-			new ChatMessage(ChatRole.User, message)
+			new(ChatRole.System, prompt),
+			new(ChatRole.User, message)
 		};
 		return await GetChatCompletionAsync(chatMessages);
 	}
