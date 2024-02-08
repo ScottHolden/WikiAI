@@ -3,7 +3,7 @@
 public interface IStrategy
 {
 	string Name { get; }
-	string DisplayName
+	//string DisplayName {}
 	Task<StrategyResponse> GetResponseAsync(string question);
 }
 public record StrategyResponse(Dictionary<string, SourceReference> Sources, string Notes, string? SearchTerm);
