@@ -27,7 +27,6 @@ param tags object = {}
 var uniqueNameFormat = '${prefix}-{0}-${uniqueString(resourceGroup().id, prefix)}'
 var uniqueShortNameFormat = toLower('${prefix}{0}${uniqueString(resourceGroup().id, prefix)}')
 var uniqueShortName = format(uniqueShortNameFormat, '')
-var mongoConnectionString = 'mongodb+srv://{0}:{1}@{2}.global.mongocluster.cosmos.azure.com/?tls=true&authMechanism=SCRAM-SHA-256&retrywrites=false&maxIdleTimeMS=120000'
 
 resource mongo 'Microsoft.DocumentDB/mongoClusters@2023-09-15-preview' = if (deployMongovCore) {
   name: uniqueShortName
@@ -178,15 +177,15 @@ resource containerApp 'Microsoft.App/containerApps@2023-05-02-preview' = if (dep
         }
         {
           name: 'aoaikey'
-          value: deployAzureOpenAI ? openai.listKeys().key1 : ''
+          value: deployAzureOpenAI ? openai.listKeys().key1 : 'null'
         }
         {
           name: 'mongoconnectionstring'
-          value: deployMongovCore ? format(mongoConnectionString, mongoUsername, mongoPassword, mongo.name) : ''
+          value: deployMongovCore ? replace(replace(mongo.properties.connectionString, '<user>', mongoUsername), '<password>', mongoPassword) : 'null'
         }
         {
           name: 'aisearchkey'
-          value: deployAzureAISearch ? aisearch.listAdminKeys().primaryKey : ''
+          value: deployAzureAISearch ? aisearch.listAdminKeys().primaryKey : 'null'
         }
       ]
     }
