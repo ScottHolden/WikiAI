@@ -8,10 +8,6 @@
     <UserSecretsId>9c960266-8815-45c6-8863-b287395b49de</UserSecretsId>
     <DockerDefaultTargetOS>Linux</DockerDefaultTargetOS>
   </PropertyGroup>
-
-  <ItemGroup>
-    <Folder Include="wwwroot\" />
-  </ItemGroup>
   <ItemGroup>
     <PackageReference Include="Azure.Search.Documents" Version="11.5.1" />
     <PackageReference Include="Azure.AI.OpenAI" Version="1.0.0-beta.9" />
