@@ -1,6 +1,13 @@
 ﻿@page
 @model WikiAI.IndexModel
 @{
+    var shouldChecked = true;
+    string CheckedValue()
+    {
+        if (!shouldChecked) return "";
+        shouldChecked = false;
+        return "checked=\"checked\"";
+    }
 }
 
 <!DOCTYPE html>
@@ -23,7 +30,7 @@
             <div class="break"></div>
             @foreach (var item in Model.Strategies)
             {
-                <input type="radio" id="@(item.Key)" name="searchType" value="@(item.Key)" checked="checked">
+                <input type="radio" id="@(item.Key)" name="searchType" value="@(item.Key)" @(CheckedValue())>
                 <label for="@(item.Key)">@(item.Value)</label>
             }
             <button type="button" id="clearbutton">Reset</button>
