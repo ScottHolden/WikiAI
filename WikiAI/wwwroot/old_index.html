@@ -1,0 +1,35 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <title>WikiAI</title>
+  <link rel="stylesheet" type="text/css" href="style.css">
+</head>
+<body>
+  <nav>
+    <h2>WikiAI</h2>
+    <p>Wiki + Azure OpenAI</p>
+    <a href="https://github.com/ScottHolden/WikiAI" target="_blank">Source on GitHub</a>
+  </nav>
+  <div class="search new" id="topSearch">
+    <h1 style="text-align: center;">WikiAI</h1>
+    <form>
+        <input type="text" placeholder="Enter your question">
+        <button type="submit" id="askbutton">Ask</button>
+        <div class="break"></div>
+        <input type="radio" id="wikiSearch" name="searchType" value="wiki" checked="checked">
+        <label for="wikiSearch">Wiki Search</label>
+        <!--
+        <input type="radio" id="vectorSearch" name="searchType" value="vector">
+        <label for="vectorSearch">Vector Search + Wiki</label>
+        -->
+        <input type="radio" id="azureSearch" name="searchType" value="aisearch" checked="checked">
+        <label for="azureSearch">Azure AI Search</label>
+
+        <button type="button" id="clearbutton">Reset</button>
+    </form>
+    </div>
+    <div id="spinner"></div>
+    <div class="answer" id="answerBox"></div>
+    <script src="wikiai.js"></script>
+</body>
+</html>
