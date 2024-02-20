@@ -4,8 +4,8 @@
   "metadata": {
     "_generator": {
       "name": "bicep",
-      "version": "0.24.24.22086",
-      "templateHash": "10924772369243011790"
+      "version": "0.25.53.49325",
+      "templateHash": "14741934404692302553"
     }
   },
   "parameters": {
@@ -78,8 +78,7 @@
   "variables": {
     "uniqueNameFormat": "[format('{0}-{{0}}-{1}', parameters('prefix'), uniqueString(resourceGroup().id, parameters('prefix')))]",
     "uniqueShortNameFormat": "[toLower(format('{0}{{0}}{1}', parameters('prefix'), uniqueString(resourceGroup().id, parameters('prefix'))))]",
-    "uniqueShortName": "[format(variables('uniqueShortNameFormat'), '')]",
-    "mongoConnectionString": "mongodb+srv://{0}:{1}@{2}.global.mongocluster.cosmos.azure.com/?tls=true&authMechanism=SCRAM-SHA-256&retrywrites=false&maxIdleTimeMS=120000"
+    "uniqueShortName": "[format(variables('uniqueShortNameFormat'), '')]"
   },
   "resources": [
     {
@@ -269,15 +268,15 @@
             },
             {
               "name": "aoaikey",
-              "value": "[if(parameters('deployAzureOpenAI'), listKeys(resourceId('Microsoft.CognitiveServices/accounts', format(variables('uniqueNameFormat'), 'openai')), '2023-05-01').key1, '')]"
+              "value": "[if(parameters('deployAzureOpenAI'), listKeys(resourceId('Microsoft.CognitiveServices/accounts', format(variables('uniqueNameFormat'), 'openai')), '2023-05-01').key1, 'null')]"
             },
             {
               "name": "mongoconnectionstring",
-              "value": "[if(parameters('deployMongovCore'), format(variables('mongoConnectionString'), parameters('mongoUsername'), parameters('mongoPassword'), variables('uniqueShortName')), '')]"
+              "value": "[if(parameters('deployMongovCore'), replace(replace(reference(resourceId('Microsoft.DocumentDB/mongoClusters', variables('uniqueShortName')), '2023-09-15-preview').connectionString, '<user>', parameters('mongoUsername')), '<password>', parameters('mongoPassword')), 'null')]"
             },
             {
               "name": "aisearchkey",
-              "value": "[if(parameters('deployAzureAISearch'), listAdminKeys(resourceId('Microsoft.Search/searchServices', variables('uniqueShortName')), '2023-11-01').primaryKey, '')]"
+              "value": "[if(parameters('deployAzureAISearch'), listAdminKeys(resourceId('Microsoft.Search/searchServices', variables('uniqueShortName')), '2023-11-01').primaryKey, 'null')]"
             }
           ]
         },
