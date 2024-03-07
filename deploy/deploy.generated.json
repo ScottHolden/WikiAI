@@ -4,8 +4,8 @@
   "metadata": {
     "_generator": {
       "name": "bicep",
-      "version": "0.24.24.22086",
-      "templateHash": "10924772369243011790"
+      "version": "0.25.53.49325",
+      "templateHash": "14992835699618991841"
     }
   },
   "parameters": {
@@ -23,11 +23,11 @@
         "description": "A prefix to add to the start of all resource names. Note: A \"unique\" suffix will also be added"
       }
     },
-    "mongoUsername": {
+    "databaseUsername": {
       "type": "string",
       "defaultValue": "wikivector"
     },
-    "mongoPassword": {
+    "databasePassword": {
       "type": "securestring",
       "defaultValue": "[format('{0}-{1}', uniqueString(newGuid()), uniqueString(newGuid()))]"
     },
@@ -35,9 +35,13 @@
       "type": "bool",
       "defaultValue": true
     },
-    "deployMongovCore": {
+    "deployPostgres": {
       "type": "bool",
       "defaultValue": true
+    },
+    "deployMongovCore": {
+      "type": "bool",
+      "defaultValue": false
     },
     "deployAzureAISearch": {
       "type": "bool",
@@ -79,9 +83,37 @@
     "uniqueNameFormat": "[format('{0}-{{0}}-{1}', parameters('prefix'), uniqueString(resourceGroup().id, parameters('prefix')))]",
     "uniqueShortNameFormat": "[toLower(format('{0}{{0}}{1}', parameters('prefix'), uniqueString(resourceGroup().id, parameters('prefix'))))]",
     "uniqueShortName": "[format(variables('uniqueShortNameFormat'), '')]",
-    "mongoConnectionString": "mongodb+srv://{0}:{1}@{2}.global.mongocluster.cosmos.azure.com/?tls=true&authMechanism=SCRAM-SHA-256&retrywrites=false&maxIdleTimeMS=120000"
+    "mongoConnectionString": "mongodb+srv://{0}:{1}@{2}.global.mongocluster.cosmos.azure.com/?tls=true&authMechanism=SCRAM-SHA-256&retrywrites=false&maxIdleTimeMS=120000",
+    "postgresConnectionString": "Server={0};Database={1};Port=5432;User Id={2};Password={3};Ssl Mode=Require;",
+    "postgresDatabaseName": "wiki"
   },
   "resources": [
+    {
+      "condition": "[parameters('deployPostgres')]",
+      "type": "Microsoft.DBforPostgreSQL/flexibleServers/configurations",
+      "apiVersion": "2023-06-01-preview",
+      "name": "[format('{0}/{1}', variables('uniqueShortName'), 'azure.extensions')]",
+      "properties": {
+        "value": "VECTOR",
+        "source": "user-override"
+      },
+      "dependsOn": [
+        "[resourceId('Microsoft.DBforPostgreSQL/flexibleServers', variables('uniqueShortName'))]"
+      ]
+    },
+    {
+      "condition": "[parameters('deployPostgres')]",
+      "type": "Microsoft.DBforPostgreSQL/flexibleServers/databases",
+      "apiVersion": "2023-06-01-preview",
+      "name": "[format('{0}/{1}', variables('uniqueShortName'), variables('postgresDatabaseName'))]",
+      "properties": {
+        "charset": "UTF8",
+        "collation": "en_US.utf8"
+      },
+      "dependsOn": [
+        "[resourceId('Microsoft.DBforPostgreSQL/flexibleServers', variables('uniqueShortName'))]"
+      ]
+    },
     {
       "condition": "[parameters('deployMongovCore')]",
       "type": "Microsoft.DocumentDB/mongoClusters/firewallRules",
@@ -153,14 +185,44 @@
       ]
     },
     {
+      "condition": "[parameters('deployPostgres')]",
+      "type": "Microsoft.DBforPostgreSQL/flexibleServers",
+      "apiVersion": "2023-06-01-preview",
+      "name": "[variables('uniqueShortName')]",
+      "location": "[parameters('location')]",
+      "sku": {
+        "name": "Standard_B1ms",
+        "tier": "Burstable"
+      },
+      "properties": {
+        "administratorLogin": "[parameters('databaseUsername')]",
+        "administratorLoginPassword": "[parameters('databasePassword')]",
+        "storage": {
+          "storageSizeGB": 32
+        },
+        "createMode": "Default",
+        "version": "16",
+        "backup": {
+          "backupRetentionDays": 7,
+          "geoRedundantBackup": "Disabled"
+        },
+        "network": {
+          "publicNetworkAccess": "Enabled"
+        },
+        "highAvailability": {
+          "mode": "Disabled"
+        }
+      }
+    },
+    {
       "condition": "[parameters('deployMongovCore')]",
       "type": "Microsoft.DocumentDB/mongoClusters",
       "apiVersion": "2023-09-15-preview",
       "name": "[variables('uniqueShortName')]",
       "location": "[parameters('location')]",
       "properties": {
-        "administratorLogin": "[parameters('mongoUsername')]",
-        "administratorLoginPassword": "[parameters('mongoPassword')]",
+        "administratorLogin": "[parameters('databaseUsername')]",
+        "administratorLoginPassword": "[parameters('databasePassword')]",
         "nodeGroupSpecs": [
           {
             "kind": "Shard",
@@ -273,11 +335,15 @@
             },
             {
               "name": "mongoconnectionstring",
-              "value": "[if(parameters('deployMongovCore'), format(variables('mongoConnectionString'), parameters('mongoUsername'), parameters('mongoPassword'), variables('uniqueShortName')), '')]"
+              "value": "[if(parameters('deployMongovCore'), format(variables('mongoConnectionString'), parameters('databaseUsername'), parameters('databasePassword'), variables('uniqueShortName')), '')]"
             },
             {
               "name": "aisearchkey",
               "value": "[if(parameters('deployAzureAISearch'), listAdminKeys(resourceId('Microsoft.Search/searchServices', variables('uniqueShortName')), '2023-11-01').primaryKey, '')]"
+            },
+            {
+              "name": "postgresconnectionstring",
+              "value": "[if(parameters('deployPostgres'), format(variables('postgresConnectionString'), reference(resourceId('Microsoft.DBforPostgreSQL/flexibleServers', variables('uniqueShortName')), '2023-06-01-preview').fullyQualifiedDomainName, variables('postgresDatabaseName'), parameters('databaseUsername'), parameters('databasePassword')), '')]"
             }
           ]
         },
@@ -321,8 +387,12 @@
                   "value": "[if(parameters('deployAzureOpenAI'), 'text-embedding-ada-002', '')]"
                 },
                 {
-                  "name": "MONGO_CONNECTIONSTRING",
+                  "name": "MONGO_CONNECTION_STRING",
                   "secretRef": "mongoconnectionstring"
+                },
+                {
+                  "name": "POSTGRES_CONNECTION_STRING",
+                  "secretRef": "postgresconnectionstring"
                 },
                 {
                   "name": "AISEARCH_ENDPOINT",
@@ -358,10 +428,12 @@
       "dependsOn": [
         "[resourceId('Microsoft.Search/searchServices', variables('uniqueShortName'))]",
         "[resourceId('Microsoft.App/managedEnvironments', variables('uniqueShortName'))]",
+        "[resourceId('Microsoft.DBforPostgreSQL/flexibleServers/databases', variables('uniqueShortName'), variables('postgresDatabaseName'))]",
         "[resourceId('Microsoft.CognitiveServices/accounts/deployments', format(variables('uniqueNameFormat'), 'openai'), 'text-embedding-ada-002')]",
         "[resourceId('Microsoft.CognitiveServices/accounts/deployments', format(variables('uniqueNameFormat'), 'openai'), 'gpt-35-turbo-16k')]",
         "[resourceId('Microsoft.DocumentDB/mongoClusters', variables('uniqueShortName'))]",
-        "[resourceId('Microsoft.CognitiveServices/accounts', format(variables('uniqueNameFormat'), 'openai'))]"
+        "[resourceId('Microsoft.CognitiveServices/accounts', format(variables('uniqueNameFormat'), 'openai'))]",
+        "[resourceId('Microsoft.DBforPostgreSQL/flexibleServers', variables('uniqueShortName'))]"
       ]
     }
   ]
